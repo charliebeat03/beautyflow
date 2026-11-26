@@ -1,0 +1,80 @@
+name: BeautyFlow CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: beautyflow-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-and-database:
+    name: Typecheck, tests, build and PostgreSQL migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: beautyflow_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d beautyflow_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/beautyflow_test
+      JWT_SECRET: ci-only-access-secret-change-me
+      JWT_REFRESH_SECRET: ci-only-refresh-secret-change-me
+      REFRESH_TOKEN_HASH_SECRET: ci-only-hash-secret-change-me
+      CLIENT_ORIGIN: http://localhost:5173
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.1
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Backend build and frontend typecheck
+        run: pnpm run check
+
+      - name: Unit and static security tests
+        run: pnpm test
+
+      - name: Frontend production build
+        run: pnpm run build:frontend
+
+      - name: Apply all PostgreSQL migrations
+        run: pnpm run migrate
+
+      - name: Verify migrations are idempotent
+        run: pnpm run migrate
+
+      - name: Verify all current migrations were recorded
+        run: |
+          node -e "const { Pool } = require('pg'); (async () => { const pool = new Pool({ connectionString: process.env.DATABASE_URL }); try { const r = await pool.query('SELECT count(*)::int AS total FROM schema_migrations'); console.log('Applied migrations:', r.rows[0].total); if (r.rows[0].total !== 19) process.exitCode = 1; } finally { await pool.end(); } })().catch(e => { console.error(e); process.exit(1); });"
