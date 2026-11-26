@@ -57,8 +57,8 @@ jobs:
         with:
           version: 10.34.1
 
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+      - name: Install dependencies from lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Backend build and frontend typecheck
         run: pnpm run check
@@ -75,6 +75,6 @@ jobs:
       - name: Verify migrations are idempotent
         run: pnpm run migrate
 
-      - name: Verify all current migrations were recorded
+      - name: Verify every SQL migration was recorded
         run: |
-          node -e "const { Pool } = require('pg'); (async () => { const pool = new Pool({ connectionString: process.env.DATABASE_URL }); try { const r = await pool.query('SELECT count(*)::int AS total FROM schema_migrations'); console.log('Applied migrations:', r.rows[0].total); if (r.rows[0].total !== 19) process.exitCode = 1; } finally { await pool.end(); } })().catch(e => { console.error(e); process.exit(1); });"
+          node -e "const fs = require('fs'); const { Pool } = require('pg'); (async () => { const pool = new Pool({ connectionString: process.env.DATABASE_URL }); try { const expected = fs.readdirSync('migrations').filter(f => f.endsWith('.sql')).length; const r = await pool.query('SELECT count(*)::int AS total FROM schema_migrations'); console.log('Applied migrations:', r.rows[0].total, '/', expected); if (r.rows[0].total !== expected) process.exitCode = 1; } finally { await pool.end(); } })().catch(e => { console.error(e); process.exit(1); });"
