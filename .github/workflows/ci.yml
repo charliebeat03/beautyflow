@@ -3,8 +3,28 @@ name: BeautyFlow CI
 on:
   push:
     branches: [main, develop]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "migrations/**"
+      - "scripts/**"
+      - "tests/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.json"
   pull_request:
     branches: [main, develop]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "migrations/**"
+      - "scripts/**"
+      - "tests/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.json"
   workflow_dispatch:
 
 permissions:
@@ -16,7 +36,6 @@ concurrency:
 
 jobs:
   quality-and-database:
-    if: ${{ hashFiles('backend/src/index.ts') != '' && hashFiles('migrations/*.sql') != '' }}
     name: Typecheck, tests, build and PostgreSQL migrations
     runs-on: ubuntu-latest
     timeout-minutes: 20
