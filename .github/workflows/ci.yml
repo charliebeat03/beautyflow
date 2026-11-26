@@ -42,6 +42,7 @@ concurrency:
 
 jobs:
   quality-and-database:
+    if: ${{ hashFiles('backend/src/index.ts') != '' && hashFiles('migrations/*.sql') != '' }}
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     name: Typecheck, tests, build and PostgreSQL migrations
     runs-on: ubuntu-latest
