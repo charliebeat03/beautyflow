@@ -13,6 +13,7 @@ on:
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "tsconfig.json"
+      - ".github/workflows/**"
   pull_request:
     branches: [main, develop]
     paths:
@@ -25,6 +26,11 @@ on:
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "tsconfig.json"
+      - ".github/workflows/**"
+  workflow_run:
+    workflows: ["Generate pnpm lockfile"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -36,6 +42,7 @@ concurrency:
 
 jobs:
   quality-and-database:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     name: Typecheck, tests, build and PostgreSQL migrations
     runs-on: ubuntu-latest
     timeout-minutes: 20
