@@ -1,4 +1,5 @@
 name: Generate pnpm lockfile
+# Keep dependency resolution and frozen-install verification in GitHub Actions.
 
 on:
   push:
