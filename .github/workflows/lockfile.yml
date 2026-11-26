@@ -1,0 +1,54 @@
+name: Generate pnpm lockfile
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "frontend/package.json"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/lockfile.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: beautyflow-lockfile-main
+  cancel-in-progress: false
+
+jobs:
+  lockfile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.1
+
+      - name: Generate lockfile from workspace manifests
+        run: pnpm install --lockfile-only --no-frozen-lockfile
+
+      - name: Commit lockfile
+        run: |
+          if git diff --quiet -- pnpm-lock.yaml; then
+            echo "pnpm-lock.yaml is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pnpm-lock.yaml
+          git commit -m "build: generate pnpm lockfile"
+          git push origin HEAD:main
